@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { uploadApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
+import { uploadApi } from '@/lib/api';
 import { UploadResponse } from '@/types';
 import { toast } from 'sonner';
 
@@ -10,14 +10,20 @@ export function useUpload() {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResponse | null>(null);
 
-  const upload = async (file: File) => {
+  const upload = async (file: File): Promise<UploadResponse> => {
     setUploading(true);
     setProgress(0);
     setResult(null);
 
     try {
       const response = await uploadApi.uploadPDF(file, setProgress);
+
+      if (!response.success || !response.data) {
+        throw new Error('Resposta inválida do servidor');
+      }
+
       setResult(response.data);
+      // Invalida a lista de catálogos para aparecer o novo
       qc.invalidateQueries({ queryKey: ['catalogs'] });
       toast.success('PDF enviado! Processamento iniciado.');
       return response.data;
@@ -30,5 +36,10 @@ export function useUpload() {
     }
   };
 
-  return { upload, progress, uploading, result };
+  const reset = () => {
+    setProgress(0);
+    setResult(null);
+  };
+
+  return { upload, progress, uploading, result, reset };
 }

@@ -4,30 +4,38 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  BookOpen, Building2, Package, Upload,
-  CheckCircle2, Clock, AlertCircle, Loader2,
-  TrendingUp, ArrowRight,
+  BookOpen, Building2, Package,
+  CheckCircle2, Clock, AlertCircle,
+  Loader2, TrendingUp, ArrowRight, Upload,
 } from 'lucide-react';
-import { useCatalogs } from '@/hooks/useCatalogs';
+import {
+  Card, CardContent, CardHeader, CardTitle,
+} from '@/components/ui/card';
+import { Badge }    from '@/components/ui/badge';
+import { Button }   from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useCatalogs }  from '@/hooks/useCatalogs';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
-} from 'recharts';
+  formatFileSize, formatRelativeDate,
+  formatProcessingTime, getStatusColor, getStatusLabel,
+} from '@/lib/utils';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { formatFileSize, formatProcessingTime, formatRelativeDate, getStatusColor, getStatusLabel } from '@/lib/utils';
+  BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 
 export default function DashboardPage() {
-  const { data: catalogsData, isLoading: catalogsLoading } = useCatalogs();
-  const { data: suppliersData, isLoading: suppliersLoading } = useSuppliers();
+  const {
+    data: catalogsData,
+    isLoading: catalogsLoading,
+    error: catalogsError,
+  } = useCatalogs();
+
+  const {
+    data: suppliersData,
+    isLoading: suppliersLoading,
+  } = useSuppliers();
 
   const catalogs  = catalogsData?.data  ?? [];
   const suppliers = suppliersData?.data ?? [];
@@ -39,27 +47,26 @@ export default function DashboardPage() {
     );
     const failed     = catalogs.filter((c) => c.status === 'FAILED');
     const totalProds = completed.reduce(
-      (acc, c) => acc + (c._count?.products ?? 0), 0
+      (acc, c) => acc + (c._count?.products ?? c.products?.length ?? 0),
+      0
     );
-
     return {
-      totalCatalogs:    catalogs.length,
-      completedCount:   completed.length,
-      processingCount:  processing.length,
-      failedCount:      failed.length,
-      totalSuppliers:   suppliers.length,
-      totalProducts:    totalProds,
+      totalCatalogs:   catalogs.length,
+      completedCount:  completed.length,
+      processingCount: processing.length,
+      failedCount:     failed.length,
+      totalSuppliers:  suppliers.length,
+      totalProducts:   totalProds,
     };
   }, [catalogs, suppliers]);
 
-  // Dados para o gráfico
   const chartData = useMemo(() => {
     return catalogs
-      .filter((c) => c.status === 'COMPLETED' && c._count?.products)
+      .filter((c) => c.status === 'COMPLETED')
       .slice(0, 8)
       .map((c) => ({
-        name: c.originalFilename.replace('.pdf', '').substring(0, 15),
-        produtos: c._count?.products ?? 0,
+        name:    c.originalFilename.replace('.pdf', '').substring(0, 12),
+        produtos: c._count?.products ?? c.products?.length ?? 0,
       }))
       .reverse();
   }, [catalogs]);
@@ -68,40 +75,55 @@ export default function DashboardPage() {
     {
       label: 'Catálogos',
       value: stats.totalCatalogs,
-      icon: BookOpen,
+      icon:  BookOpen,
       color: 'text-blue-500',
-      bg: 'bg-blue-500/10',
-      href: '/catalogs',
+      bg:    'bg-blue-500/10',
+      href:  '/catalogs',
     },
     {
       label: 'Produtos',
       value: stats.totalProducts,
-      icon: Package,
+      icon:  Package,
       color: 'text-green-500',
-      bg: 'bg-green-500/10',
-      href: '/catalogs',
+      bg:    'bg-green-500/10',
+      href:  '/catalogs',
     },
     {
       label: 'Fornecedores',
       value: stats.totalSuppliers,
-      icon: Building2,
+      icon:  Building2,
       color: 'text-purple-500',
-      bg: 'bg-purple-500/10',
-      href: '/suppliers',
+      bg:    'bg-purple-500/10',
+      href:  '/suppliers',
     },
     {
       label: 'Processando',
       value: stats.processingCount,
-      icon: Loader2,
+      icon:  Loader2,
       color: 'text-yellow-500',
-      bg: 'bg-yellow-500/10',
-      href: '/catalogs',
+      bg:    'bg-yellow-500/10',
+      href:  '/catalogs',
     },
   ];
 
+  if (catalogsError) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-500" />
+          <p className="font-medium">Erro ao carregar dados</p>
+          <p className="mt-1 text-sm">
+            Verifique se o backend está rodando em{' '}
+            {process.env.NEXT_PUBLIC_API_URL}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, i) => (
           <motion.div
@@ -111,14 +133,14 @@ export default function DashboardPage() {
             transition={{ delay: i * 0.1 }}
           >
             <Link href={card.href}>
-              <Card className="transition-colors hover:bg-accent/30">
+              <Card className="cursor-pointer transition-colors hover:bg-accent/30">
                 <CardContent className="flex items-center gap-4 p-5">
                   <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${card.bg}`}>
                     <card.icon className={`h-6 w-6 ${card.color}`} />
                   </div>
                   <div>
                     {catalogsLoading || suppliersLoading ? (
-                      <Skeleton className="h-7 w-16" />
+                      <Skeleton className="mb-1 h-7 w-12" />
                     ) : (
                       <p className="text-2xl font-bold">{card.value}</p>
                     )}
@@ -150,25 +172,15 @@ export default function DashboardPage() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={chartData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="stroke-border"
-                    />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 10 }}
-                      className="text-muted-foreground"
-                    />
-                    <YAxis
-                      tick={{ fontSize: 10 }}
-                      className="text-muted-foreground"
-                    />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip
                       contentStyle={{
-                        background: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
+                        background:   'hsl(var(--card))',
+                        border:       '1px solid hsl(var(--border))',
                         borderRadius: '8px',
-                        fontSize: '12px',
+                        fontSize:     '12px',
                       }}
                     />
                     <Bar
@@ -183,7 +195,7 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* Status rápido */}
+        {/* Status */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -195,29 +207,11 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                {
-                  label: 'Concluídos',
-                  value: stats.completedCount,
-                  icon: CheckCircle2,
-                  color: 'text-green-500',
-                },
-                {
-                  label: 'Processando',
-                  value: stats.processingCount,
-                  icon: Clock,
-                  color: 'text-yellow-500',
-                },
-                {
-                  label: 'Com falha',
-                  value: stats.failedCount,
-                  icon: AlertCircle,
-                  color: 'text-red-500',
-                },
+                { label: 'Concluídos',  value: stats.completedCount,  icon: CheckCircle2, color: 'text-green-500' },
+                { label: 'Processando', value: stats.processingCount, icon: Clock,         color: 'text-yellow-500' },
+                { label: 'Com falha',   value: stats.failedCount,     icon: AlertCircle,  color: 'text-red-500' },
               ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between"
-                >
+                <div key={item.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm">
                     <item.icon className={`h-4 w-4 ${item.color}`} />
                     {item.label}
@@ -230,7 +224,7 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Catálogos recentes */}
+      {/* Catálogos Recentes */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -255,6 +249,7 @@ export default function DashboardPage() {
               </div>
             ) : catalogs.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
+                <BookOpen className="mx-auto mb-3 h-10 w-10 opacity-20" />
                 <p className="text-sm">Nenhum catálogo ainda</p>
                 <Link href="/upload">
                   <Button size="sm" className="mt-3">
@@ -264,8 +259,8 @@ export default function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-2">
-                {catalogs.slice(0, 5).map((catalog) => (
+              <div className="space-y-1">
+                {catalogs.slice(0, 6).map((catalog) => (
                   <Link key={catalog.id} href={`/catalogs/${catalog.id}`}>
                     <div className="flex items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-accent/30">
                       <div className="flex items-center gap-3">
@@ -287,11 +282,9 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {catalog._count && (
-                          <span className="text-xs text-muted-foreground">
-                            {catalog._count.products} produtos
-                          </span>
-                        )}
+                        <span className="hidden text-xs text-muted-foreground sm:block">
+                          {catalog._count?.products ?? catalog.products?.length ?? 0} produtos
+                        </span>
                         <Badge
                           variant="outline"
                           className={`text-xs ${getStatusColor(catalog.status)}`}

@@ -4,28 +4,23 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  LayoutDashboard,
-  BookOpen,
-  Building2,
-  Upload,
-  Package,
-  ChevronRight,
-  Moon,
-  Sun,
+  LayoutDashboard, BookOpen, Building2,
+  Upload, Store, Moon, Sun, ChevronRight,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/catalogs', label: 'Catálogos', icon: BookOpen },
-  { href: '/suppliers', label: 'Fornecedores', icon: Building2 },
-  { href: '/upload', label: 'Upload PDF', icon: Upload },
+  { href: '/',          label: 'Dashboard',    icon: LayoutDashboard },
+  { href: '/catalogs',  label: 'Catálogos',    icon: BookOpen        },
+  { href: '/suppliers', label: 'Fornecedores', icon: Building2       },
+  { href: '/upload',    label: 'Upload PDF',   icon: Upload          },
+  { href: '/store',     label: 'Minha Loja',   icon: Store           },
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname      = usePathname();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -33,7 +28,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center gap-3 border-b border-border px-6 py-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-          <Package className="h-5 w-5 text-primary-foreground" />
+          <BookOpen className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
           <p className="text-sm font-semibold leading-tight">PDF Catalog</p>
@@ -71,16 +66,16 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
+      {/* Theme */}
       <div className="border-t border-border p-4">
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-3"
+          className="relative w-full justify-start gap-3"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <Moon className="absolute left-4 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           Alternar tema
         </Button>
       </div>

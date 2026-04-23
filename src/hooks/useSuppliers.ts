@@ -1,8 +1,4 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { suppliersApi } from '@/lib/api';
 import { Supplier } from '@/types';
 import { toast } from 'sonner';
@@ -10,15 +6,16 @@ import { toast } from 'sonner';
 export function useSuppliers() {
   return useQuery({
     queryKey: ['suppliers'],
-    queryFn: () => suppliersApi.list(),
+    queryFn:  () => suppliersApi.list(),
+    staleTime: 30_000,
   });
 }
 
 export function useSupplier(id: string) {
   return useQuery({
     queryKey: ['suppliers', id],
-    queryFn: () => suppliersApi.getById(id),
-    enabled: !!id,
+    queryFn:  () => suppliersApi.getById(id),
+    enabled:  !!id,
   });
 }
 
@@ -40,9 +37,9 @@ export function useUpdateSupplier() {
     mutationFn: ({ id, data }: { id: string; data: Partial<Supplier> }) =>
       suppliersApi.update(id, data),
     onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: ['suppliers', id] });
       qc.invalidateQueries({ queryKey: ['suppliers'] });
-      toast.success('Fornecedor atualizado!');
+      qc.invalidateQueries({ queryKey: ['suppliers', id] });
+      toast.success('Fornecedor atualizado com sucesso!');
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -54,7 +51,7 @@ export function useDeleteSupplier() {
     mutationFn: (id: string) => suppliersApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['suppliers'] });
-      toast.success('Fornecedor removido!');
+      toast.success('Fornecedor removido com sucesso!');
     },
     onError: (err: Error) => toast.error(err.message),
   });
